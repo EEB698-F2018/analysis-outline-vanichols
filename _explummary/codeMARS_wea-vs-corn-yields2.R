@@ -37,3 +37,8 @@ setwd(dirname(path))
 
 wea <- read_csv("../_data/tidy/td_wea.csv") 
 cyld <- read_csv("../_data/tidy/td_corn-ylds.csv") 
+
+
+# Trying to push ----------------------------------------------------------
+
+
