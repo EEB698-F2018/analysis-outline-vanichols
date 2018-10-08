@@ -41,8 +41,9 @@ wea <- read_csv("../_data/peeps/dat_ML_wea_1987-2017.csv", skip=0) %>%
          site = "Marsden") %>%
   rename(highT_oC = highc,
          lowT_oC = lowc,
-         precip_mm = precipmm) %>%
-  select(site, year, doy, highT_oC, lowT_oC) %>%
+         precip_mm = precipmm,
+         rad_mj = narr_srad) %>%
+  select(site, year, doy, highT_oC, lowT_oC, precip_mm, rad_mj) %>%
   mutate(avgT_oC =(lowT_oC + highT_oC)/2)
 
 write_csv(wea, "../_data/tidy/td_wea.csv")

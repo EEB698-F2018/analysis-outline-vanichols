@@ -39,6 +39,15 @@ wea <- read_csv("../_data/tidy/td_wea.csv")
 cyld <- read_csv("../_data/tidy/td_corn-ylds.csv") 
 
 
-# Trying to push ----------------------------------------------------------
+# Different ways of summarising weather -----------------------------------
 
+wsmy <- wea %>% 
+  mutate(SDD = highT_oC - 30,
+         SDD = ifelse(SDD<0, 0, SDD)) %>%
+  group_by(year) %>%
+  summarise(cSDD = sum(SDD, na.rm = T),
+            cP_m = sum(precip_mm))
 
+dat <- cyld %>% left_join(wsmy)
+
+write_csv(dat, "../_data/tidy/td_yld-wea-smy.csv")
