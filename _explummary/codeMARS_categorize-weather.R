@@ -24,40 +24,42 @@ setwd(dirname(path))
 crn <- read_csv("../_data/tidy/td_corn-ylds.csv")
 wea <- read_csv("../_data/tidy/td_wea.csv")
 
-# Quantify data to simulate meaningfully ----------------------------------
 
-crnsmy <-
-  crn %>%
-  group_by(trt) %>%
-  summarise(yld = mean(dm_Mgha, na.rm = T),
-            yld_sd = sd(dm_Mgha, na.rm = T))
+# Find long-term means ----------------------------------------------------
 
-MakeParms <- function(myn){
-fmeans <- crnsmy$yld
-fsds <- crnsmy$yld_sd
-fns <- rep(myn,3)
+# Hmm. 
+wyr <- wea %>%
+  group_by(site, year) %>%
+  summarise(mT_C = mean(avgT_oC, na.rm = T),
+            totP_mm = sum(precip_mm, na.rm = T),
+            mP_mm = mean(totP_mm, na.rm = T)) %>%
+  group_by(site) %>%
+  mutate(LT_T = mean(mT_C),
+         LT_P = mean(mP_mm))
 
-fparms <- tibble(mean = fmeans,
-                  sd = fsds,
-                  n = fns)
-p1 <- 
-  fparms %>% 
-  pmap(rnorm)
+wyr %>%
+  ggplot(aes(mT_C, mP_mm)) + 
+  geom_point() + 
+  geom_hline(yintercept = wyr$LT_P[1]) + 
+  geom_vline(xintercept = wyr$LT_T[1]) + 
+  geom_label(aes(label = year))
 
-mysim <- tibble(n = myn,
-                c2y = p1[[1]],
-                c3y = p1[[2]],
-                c4y = p1[[3]])  
-return(mysim)
-}
+ggsave("../_figs/wea-yrs.png")
 
-# use pmap (from purrr) to sample from different distributions
-# See how significantly different they are w/10 points
+# Try scaling w/in pipe
+wyr2 <- wea %>%
+  group_by(site, year) %>%
+  summarise(mT_C = mean(avgT_oC, na.rm = T),
+            totP_mm = sum(precip_mm, na.rm = T),
+            mP_mm = mean(totP_mm, na.rm = T)) %>%
+  mutate(scT_C = scale(mT_C),
+         scP_mm = scale(mP_mm))          
 
-MakeParms(10) %>%
-  bind_rows(MakeParms(20)) %>%
-  bind_rows(MakeParms(30)) %>%
-  gather(c2y:c4y, key = rot, value = yld) %>%
-  ggplot(aes(rot, yld)) + 
-  stat_summary(aes(color = factor(n))) + 
-  facet_grid(~n)
+wyr2 %>%
+  ggplot(aes(scT_C, scP_mm)) + 
+  geom_point() +
+  geom_hline(yintercept = 0) + 
+  geom_vline(xintercept = 0) +
+  geom_label(aes(label = year))
+
+ggsave("../_figs/wea-yrs-scaled.png")
