@@ -27,39 +27,74 @@ wea <- read_csv("../_data/tidy/td_wea.csv")
 
 # Find long-term means ----------------------------------------------------
 
-# Hmm. 
-wyr <- wea %>%
-  group_by(site, year) %>%
-  summarise(mT_C = mean(avgT_oC, na.rm = T),
-            totP_mm = sum(precip_mm, na.rm = T),
-            mP_mm = mean(totP_mm, na.rm = T)) %>%
-  group_by(site) %>%
-  mutate(LT_T = mean(mT_C),
-         LT_P = mean(mP_mm))
-
-wyr %>%
-  ggplot(aes(mT_C, mP_mm)) + 
-  geom_point() + 
-  geom_hline(yintercept = wyr$LT_P[1]) + 
-  geom_vline(xintercept = wyr$LT_T[1]) + 
-  geom_label(aes(label = year))
-
-ggsave("../_figs/wea-yrs.png")
-
+# Try defining a 'water year'
 # Try scaling w/in pipe
 wyr2 <- wea %>%
+  filter(doy > 0 & doy < 227) %>% # growing season
   group_by(site, year) %>%
   summarise(mT_C = mean(avgT_oC, na.rm = T),
             totP_mm = sum(precip_mm, na.rm = T),
             mP_mm = mean(totP_mm, na.rm = T)) %>%
   mutate(scT_C = scale(mT_C),
-         scP_mm = scale(mP_mm))          
+         scP_mm = scale(mP_mm))
 
-wyr2 %>%
+# Preceip
+pcp <- wea %>% 
+  mutate(year = ifelse(doy > 274, year + 1, year)) %>%
+  filter(doy >274 | doy < 227 ) %>%
+  group_by(year) %>%
+  summarise(totP_mm = sum(precip_mm, na.rm = T)) %>%
+  mutate(scP_mm = scale(totP_mm))
+
+deg <- wea %>% 
+  filter(doy >180 & doy < 212 ) %>%
+  group_by(year) %>%
+  summarise(myT_C = mean(avgT_oC)) %>%
+  mutate(scT_C = scale(myT_C))
+
+mywea <- pcp %>% left_join(deg)
+
+mywea %>%
   ggplot(aes(scT_C, scP_mm)) + 
   geom_point() +
   geom_hline(yintercept = 0) + 
   geom_vline(xintercept = 0) +
   geom_label(aes(label = year))
 
-ggsave("../_figs/wea-yrs-scaled.png")
+
+
+# Quantify yield diffs ----------------------------------------------------
+
+crn %>%
+  mutate(dm_Mgha = dm_Mgha*1.15) %>%
+  spread(trt, value = dm_Mgha) %>%
+  mutate(up4 = C4 - C2,
+         up3 = C3 - C2) %>%
+  group_by(year) %>%
+  summarise(up4 = (mean(up4)),
+            gb = ifelse(up4 > 0, "positive", "negative"),
+            up4 = abs(up4)) %>%
+
+  left_join(mywea) %>%
+  
+  ggplot(aes(scT_C, scP_mm)) + 
+  geom_hline(yintercept = 0) + 
+  geom_vline(xintercept = 0) +
+  geom_point(aes(size = up4, fill = gb), pch = 21) +
+  geom_text_repel(aes(label = year)) + 
+  
+  annotate(geom = "text", label = "Hot and Dry", 
+           x = 1.25, y = -1.25, fontface = "italic", color = "gray70")  +
+  annotate(geom = "text", label = "Hot and Wet", 
+           x = 1.25, y = 1.25, fontface = "italic", color = "gray70")  +
+  annotate(geom = "text", label = "Cool and Dry", 
+           x = -1.25, y = -1.25, fontface = "italic", color = "gray70")  +
+  annotate(geom = "text", label = "Cool and Wet", 
+           x = -1.25, y = 1.25, fontface = "italic", color = "gray70")  +
+  coord_cartesian(xlim = c(-2.5, 2.5), ylim = c(-2.5, 2.5)) +
+  scale_fill_manual(values = c("red", "blue")) +
+  theme_bw() + 
+  labs(x = "August Temperature\nStandard Deviations From Long Term Mean",
+       y = "Oct - Aug Precipitation\nStandard Deviations From Long Term Mean",
+       size = "Size of Yield Differential\n4-year vs 2-year\n[Mg/ha]",
+       fill = "Yield Differential Sign")
