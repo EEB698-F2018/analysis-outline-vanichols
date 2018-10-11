@@ -13,6 +13,8 @@
 
 rm(list = ls())
 library(tidyverse)
+library(lubridate)
+library(ggrepel)
 
 path <- rstudioapi::getActiveDocumentContext()$path
 Encoding(path) <- "UTF-8"
@@ -27,27 +29,18 @@ wea <- read_csv("../_data/tidy/td_wea.csv")
 
 # Find long-term means ----------------------------------------------------
 
-# Try defining a 'water year'
-# Try scaling w/in pipe
-wyr2 <- wea %>%
-  filter(doy > 0 & doy < 227) %>% # growing season
-  group_by(site, year) %>%
-  summarise(mT_C = mean(avgT_oC, na.rm = T),
-            totP_mm = sum(precip_mm, na.rm = T),
-            mP_mm = mean(totP_mm, na.rm = T)) %>%
-  mutate(scT_C = scale(mT_C),
-         scP_mm = scale(mP_mm))
-
 # Preceip
 pcp <- wea %>% 
-  mutate(year = ifelse(doy > 274, year + 1, year)) %>%
-  filter(doy >274 | doy < 227 ) %>%
+  # Define a water year as Oct-Oct
+  #mutate(year = ifelse(doy > 274, year + 1, year)) %>%
+  # Keep precip from specific days
+  filter(doy >182 & doy < 244 ) %>%
   group_by(year) %>%
   summarise(totP_mm = sum(precip_mm, na.rm = T)) %>%
   mutate(scP_mm = scale(totP_mm))
 
 deg <- wea %>% 
-  filter(doy >180 & doy < 212 ) %>%
+  filter(doy >182 & doy < 244 ) %>%
   group_by(year) %>%
   summarise(myT_C = mean(avgT_oC)) %>%
   mutate(scT_C = scale(myT_C))
@@ -64,6 +57,8 @@ mywea %>%
 
 
 # Quantify yield diffs ----------------------------------------------------
+
+# What if I divide them into 2 groups based on spring rain, THEN look at July/Aug temps
 
 crn %>%
   mutate(dm_Mgha = dm_Mgha*1.15) %>%
@@ -94,7 +89,7 @@ crn %>%
   coord_cartesian(xlim = c(-2.5, 2.5), ylim = c(-2.5, 2.5)) +
   scale_fill_manual(values = c("red", "blue")) +
   theme_bw() + 
-  labs(x = "August Temperature\nStandard Deviations From Long Term Mean",
-       y = "Oct - Aug Precipitation\nStandard Deviations From Long Term Mean",
+  labs(x = "Jul-Aug Temp\nStandard Deviations From Long Term Mean",
+       y = "Jul-Aug Precip\nStandard Deviations From Long Term Mean",
        size = "Size of Yield Differential\n4-year vs 2-year\n[Mg/ha]",
        fill = "Yield Differential Sign")
