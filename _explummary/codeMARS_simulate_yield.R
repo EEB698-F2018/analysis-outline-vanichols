@@ -53,10 +53,14 @@ return(mysim)
 # use pmap (from purrr) to sample from different distributions
 # See how significantly different they are w/10 points
 
+myplot <- 
 MakeParms(10) %>%
   bind_rows(MakeParms(20)) %>%
   bind_rows(MakeParms(30)) %>%
-  gather(c2y:c4y, key = rot, value = yld) %>%
-  ggplot(aes(rot, yld)) + 
+  gather(c2y:c4y, key = rot, value = yld) 
+
+write_csv(myplot, "../_data/tidy/td_sim-gauss-corn-yields.csv")
+  
+  myplot %>% ggplot(aes(rot, yld)) + 
   stat_summary(aes(color = factor(n))) + 
   facet_grid(~n)
